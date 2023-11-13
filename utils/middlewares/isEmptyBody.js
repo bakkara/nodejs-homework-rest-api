@@ -1,4 +1,4 @@
-const { HttpError } = require("../utils/validation/HttpErrors");
+const { HttpError } = require("../helpers/HttpErrors");
 
 const isEmptyBody = async(req, res, next)=> {
     const keys = Object.keys(req.body);

@@ -6,7 +6,7 @@ const {
   deleteContact,
   upContact } = require('../../controllers/contactsController');
   
-const isEmptyBody = require('../../middlewares/isEmptyBody');
+const isEmptyBody = require('../../utils/middlewares/isEmptyBody');
 
 
 const router = express.Router()
