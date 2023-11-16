@@ -13,12 +13,12 @@ const router = express.Router()
 
 router.get('/', getAllContacts)
 
-router.get('/:contactId', getOneContact)
+// router.get('/:contactId', getOneContact)
 
-router.post('/', isEmptyBody, createContact)
+// router.post('/', isEmptyBody, createContact)
 
-router.delete('/:contactId', deleteContact)
+// router.delete('/:contactId', deleteContact)
 
-router.put('/:contactId', isEmptyBody, upContact)
+// router.put('/:contactId', isEmptyBody, upContact)
 
 module.exports = router
