@@ -1,60 +1,64 @@
-const fs = require('fs/promises');
-const path = require("path");
-const crypto = require("crypto");
+const { Schema, model } = require('mongoose');
+const {handleMongooseError, preUpdate} = require('../utils/helpers/handleMongooseError');
+const Joi = require("joi");
 
-const contactPath = path.join(__dirname, "contacts.json");
+const contactSchema = new Schema({
+    name: {
+      type: String,
+      required: [true, 'Set name for contact'],
+    },
+    email: {
+      type: String,
+    },
+    phone: {
+      type: String,
+    },
+    favorite: {
+      type: Boolean,
+      default: false,
+    },
+}, 
+{ versionKey: false, timestamps: true })
 
-const updateContacts = contacts => fs.writeFile(contactPath, JSON.stringify(contacts, null, 2));
+contactSchema.post('save', handleMongooseError );
+contactSchema.pre("findOneAndUpdate", preUpdate);
+contactSchema.post('findOneAndUpdate', handleMongooseError );
 
-const listContacts = async () => {
-  const rawJson = await fs.readFile(contactPath);
-  const contacts = JSON.parse(rawJson);
-  return contacts;
+
+const createContactValidationSchema = Joi.object({
+  "name": Joi.string().min(3).max(40).required().messages({
+    'any.required': `Missing required name field`,
+  }),
+  "email": Joi.string().min(3).max(40).required().messages({
+    'any.required': 'Missing required email field',
+    
+  }),
+  "phone": Joi.string().min(3).max(40).required().messages({
+    'any.required': `Missing required phone field`,
+  }),
+  "favorite": Joi.boolean(),
+});
+
+const updateContactValidationSchema = Joi.object({
+  name: Joi.string().min(3).max(40),
+  email: Joi.string().min(3).max(40),
+  phone: Joi.string().min(3).max(40),
+  favorite: Joi.boolean(),
+}).or("name", "email", "phone", "favorite");
+
+const contactFavoriteSchema = Joi.object({
+  favorite: Joi.boolean().required(),
+});
+
+const Contact = model('contact', contactSchema);
+
+const schemas =  {
+    createContactValidationSchema,
+    updateContactValidationSchema,
+    contactFavoriteSchema,
 }
 
-const getContactById = async (contactId) => {
-  const contacts = await listContacts();
-  const result = contacts.find((item) => item.id === contactId);
-  return result || null;
-}
-
-const removeContact = async (contactId) => {
-  const contacts = await listContacts();
-    const index = contacts.findIndex((item) => item.id === contactId);
-    if (index === -1) {
-        return null;
-    }
-  const [result] = contacts.splice(index, 1);
-  await updateContacts(contacts);
-  return result;
-}
-
-const addContact = async (body) => {
-  const contacts = await listContacts();
-  const newContact = {
-    id: crypto.randomUUID(),
-    ...body,
-  };
-    contacts.push(newContact);
-    await updateContacts(contacts);
-    return newContact;
-}
-
-const updateContact = async (contactId, body) => {
-  const contacts = await listContacts();
-  const index = contacts.findIndex((contact) => contact.id === contactId);
-  if (index === -1) {
-    return null;
-  }
-  contacts.splice(index, 1, { ...contacts[index], ...body });
-  await updateContacts(contacts);
-  return contacts[index];
-}
-
-module.exports = {
-  listContacts,
-  getContactById,
-  removeContact,
-  addContact,
-  updateContact,
-}
+module.exports = { 
+    Contact,
+    schemas
+};
