@@ -21,14 +21,20 @@ const userSchema = new Schema (
       enum: ["starter", "pro", "business"],
       default: "starter"
     },
-    token: String
-  }, { versionKey: false, timestamps: true })
+    token: String,
+    avatarURL: {
+      type: String,
+      // required: true,
+    },
+  }, 
+  
+  { versionKey: false, timestamps: true })
 
 userSchema.post('save', handleMongooseError);
 userSchema.pre("findOneAndUpdate", preUpdate);
 userSchema.post('findOneAndUpdate', handleMongooseError );
 
-const User = model('users', userSchema);
+const User = model('user', userSchema);
 
 
 module.exports = User;
