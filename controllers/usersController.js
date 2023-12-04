@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs/promises');
 const gravatar = require('gravatar');
+const Jimp = require('jimp');
 
 const User = require("../models/users");
 
@@ -17,7 +18,7 @@ const signup = ctrlWrapper(async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (user) {
-        throw HttpError(409, "Email in use");
+        throw new HttpError(409, "Email in use");
     }
     
     const hashPassword = await bcrypt.hash(password, 10);
@@ -33,6 +34,7 @@ const signup = ctrlWrapper(async (req, res) => {
         user: {
         email: newUser.email,
         subscription: newUser.subscription,
+        avatarUrl: newUser.avatarURL
     }
 })
 })
@@ -46,7 +48,7 @@ const signin = ctrlWrapper(async (req, res) => {
     
     const passwordCompare = await bcrypt.compare(password, user.password);
     if(!passwordCompare) {
-        throw HttpError(401, "Email or password is wrong");
+        throw new HttpError(401, "Email or password is wrong");
     }
 
     const payload = {
@@ -80,7 +82,7 @@ const logout = ctrlWrapper(async (req, res) => {
     const result = await User.findByIdAndUpdate(_id, { token: '' });
 
   if (!result) {
-    throw HttpError(404, 'Not found');
+    throw new HttpError(404, 'Not found');
   }
   res.status(204).json({});
 });
@@ -88,6 +90,11 @@ const logout = ctrlWrapper(async (req, res) => {
 const updateAvatar = ctrlWrapper(async (req, res) => {
   const { _id } = req.user;
   const { path: oldPath, filename } = req.file;
+  const img = await Jimp.read(oldPath);
+  await img
+    .resize(250, 250)
+    .writeAsync(oldPath);
+
   const newPath = path.join(avatarsPath, filename);
   await fs.rename(oldPath, newPath);
   const avatarURL = path.join('avatars', filename);
