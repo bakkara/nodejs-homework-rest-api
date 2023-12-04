@@ -12,6 +12,7 @@ const validateBody = require('../../utils/decorators/validateBody');
 const { isValidId } = require('../../utils/middlewares/isValidId');
 const authenticate = require('../../utils/middlewares/authenticate');
 
+
 const router = express.Router()
 
 router.use(authenticate)
