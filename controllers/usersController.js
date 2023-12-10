@@ -1,16 +1,22 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto')
+
 const path = require('path');
 const fs = require('fs/promises');
 const gravatar = require('gravatar');
 const Jimp = require('jimp');
 
+const sendEmail = require('../utils/helpers/sendEmail')
+
 const User = require("../models/users");
 
 const ctrlWrapper = require("../utils/decorators/ctrlWrapper");
 const { HttpError } = require("../utils/helpers/HttpErrors");
+const verifyEmailSchema = require('../const/verifyEmailSchema');
 
-const {SECRET_KEY} = process.env;
+
+const {SECRET_KEY, BASE_URL} = process.env;
 const avatarsPath = path.join(__dirname, '../', 'public', 'avatars');
 
 
@@ -23,13 +29,18 @@ const signup = ctrlWrapper(async (req, res) => {
     
     const hashPassword = await bcrypt.hash(password, 10);
     const avatarURL = gravatar.url(email);
+    const verificationToken = crypto.randomUUID()
 
     const newUser = await User.create({
       ...req.body, 
       password: hashPassword,
-      avatarURL
+      avatarURL,
+      verificationToken
     });
 
+    const verifyEmail = verifyEmailSchema(email, BASE_URL, verificationToken)
+  
+  await sendEmail(verifyEmail);
     res.status(201).json({
         user: {
         email: newUser.email,
@@ -37,15 +48,53 @@ const signup = ctrlWrapper(async (req, res) => {
         avatarUrl: newUser.avatarURL
     }
 })
+})  
+
+const verifyEmail = ctrlWrapper(async(req, res)=> {
+  const { verificationToken } = req.params;
+  const user = await User.findOne({ verificationToken });
+  if (!user) {
+    throw new HttpError(404, 'User not found');
+  }
+
+  await User.updateOne({ verificationToken }, { verify: true, verificationToken: null });
+
+  res.status(200).json({
+    message: 'Verification successful',
+  });
 })
+
+const resendEmailVerify = ctrlWrapper(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new HttpError(404, 'User not found'); 
+  }
+
+  if (user.verify) {
+    throw new HttpError(400, 'Verification has already been passed');
+  }
+
+  const verifyEmail = verifyEmailSchema(email, BASE_URL, user.verificationToken)
+
+  await sendEmail(verifyEmail);
+
+  res.status(200).json({
+    message: 'Verification email sent',
+  });
+});
 
 const signin = ctrlWrapper(async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-        throw HttpError(401, 'Email or password is wrong')
+        throw new HttpError(401, 'Email or password is wrong')
     }
     
+    if(!user.verify) {
+      throw new HttpError(401, "Email not verified");
+    }
+
     const passwordCompare = await bcrypt.compare(password, user.password);
     if(!passwordCompare) {
         throw new HttpError(401, "Email or password is wrong");
@@ -104,6 +153,8 @@ const updateAvatar = ctrlWrapper(async (req, res) => {
 
 module.exports = {
     signup,
+    verifyEmail,
+    resendEmailVerify,
     signin,
     current,
     logout,
