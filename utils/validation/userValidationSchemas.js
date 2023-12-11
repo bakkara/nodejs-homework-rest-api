@@ -1,6 +1,6 @@
 const Joi = require("joi");
 
-const emailRegexp = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+const emailRegexp = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 
 const registerSchema = Joi.object({
   email: Joi.string().pattern(new RegExp(emailRegexp)).required().messages({
@@ -31,6 +31,8 @@ const emailSchema = Joi.object({
     'any.required': `Missing required password field`,
   }),
 });
+
+
 
 const userSchemas = {
   registerSchema,
